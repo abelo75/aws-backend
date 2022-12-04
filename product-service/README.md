@@ -7,11 +7,13 @@
 
 ## Product microservice:
 path in mono repository ```/product-service```
-### endpoints
+### Endpoints:
 - products list: https://5h99mxgyil.execute-api.eu-west-1.amazonaws.com/products
 - product by id: https://5h99mxgyil.execute-api.eu-west-1.amazonaws.com/products/{productId}
 
-[mock data file](product-service/data/mock.js)
+
+
+[mock data file](data/mock.js)
 
 ### Deploy
 
@@ -32,7 +34,7 @@ Project included:
 - Lambda handlers are covered by basic UNIT test
 - Lambda handlers code written in separate modules
 - use status codes 404 for product not found and 500 for internal server error
-- API gateway [OpenAPI swagger documentation](product-service/swagger.yaml)
+- API gateway [OpenAPI swagger documentation](swagger.yaml)
 
 Links:
 [Frontend for check](https://d1w4or432cxowo.cloudfront.net/)
