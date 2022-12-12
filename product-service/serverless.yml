@@ -9,6 +9,15 @@ provider:
   stage: dev
   httpApi:
     cors: true
+  environment:
+    PRODUCTS_TABLE: "products1"
+    STOCKS_TABLE: "stocks1"
+    PROVIDER_REGION: ${self:provider.region}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:*"
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/*"
 
 functions:
   getProductsById:
@@ -17,12 +26,66 @@ functions:
       - httpApi:
           method: GET
           path: /products/{productId}
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource:
+          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
   getProductsList:
     handler: handler.getProductsList
     events:
       - httpApi:
           method: GET
           path: /products
+    #iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: "*"
+#        Resource:
+#          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+#          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
+  createProduct:
+    handler: handler.createProduct
+    events:
+      - httpApi:
+          method: POST
+          path: /products
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+  updateStock:
+    handler: handler.updateStock
+    events:
+      - httpApi:
+          method: PUT
+          path: /products/{productId}
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
+        #Resource: "arn:aws:dynamodb:us-east-1:897362587641:table/Table_Name"
       #    The following are a few example events you can configure
 #    NOTE: Please make sure to change your handler code to work with those events
 #    Check the event documentation for details
@@ -50,15 +113,59 @@ functions:
 plugins:
   - serverless-webpack
   - serverless-openapi-documentation
-
+#  - serverless-dynamodb-local
+  - serverless-iam-roles-per-function
 custom:
   webpack:
     webpackConfig: ./webpack.config.js
     includeModules: true # enable auto-packing of external modules
+#  dynamodb:
+#    stages:
+#      - dev
+#    start:
+#      port: 8000
+#      inMemory: true
+#      migrate: true
+#      seed: true
+#      convertEmptyValues: true
+#    seed:
+#      domain:
+#        sources:
+#          - table: products
+#            sources: [./data/products.json]
+#          - table: stocks
+#            sources: [./data/stocks.json]
 
-
-# you can add CloudFormation resource templates here
-#resources:
+resources:
+  Resources:
+    products:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.PRODUCTS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    stocks:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.STOCKS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
 #  Resources:
 #    NewResource:
 #      Type: AWS::S3::Bucket

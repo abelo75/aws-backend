@@ -25,33 +25,36 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: string
-                      example: '0001'
-                    description:
-                      type: string
-                      description: Product Id
-                      example: Product 1
-                    price:
-                      type: number
-                      format: float
-                      example: 7
-                    priority:
-                      type: integer
-                      format: int32
-                    placeId:
-                      type: string
-                      description: Place Id
-                      example: '0001'
-                    power:
-                      type: integer
-                      description: Power in bundle
-                  xml:
-                    name: order
+                  $ref: '#/components/schemas/Product'
         '500':
           description: Server error
+    post:
+      summary: Create product
+      description: Create new product
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProduct'
+            examples:
+              Sample Service 1:
+                value: {"description": "Service 1", "title": "srv 1", "price": "100", "power": "50", "placeId": "0001", "priority": "1"}
+              Sample Service 2:
+                value: {"description": "Service 2", "title": "srv 2", "price": "200", "power": "100", "placeId": "0002", "priority": "1"}
+      responses:
+        '200':
+          description: Create product successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          description: Wrong parameters
+        '500':
+          description: Server error
+
   /products/{productId}:
     get:
       summary: Find product by Id
@@ -64,41 +67,62 @@ paths:
           required: true
           schema:
             type: string
+          examples:
+            Product 1:
+              value: 0fd0c978-c00d-dbcf-6b44-85141c81fcf2
+            Product 2:
+              value: 2eb2407a-c8e8-161e-aafe-b02dd8be64ea
+
       responses:
         '200':
           description: successful operation
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    example: '0001'
-                  description:
-                    type: string
-                    description: Product Id
-                    example: Product 1
-                  price:
-                    type: number
-                    format: float
-                    example: 7
-                  priority:
-                    type: integer
-                    format: int32
-                  placeId:
-                    type: string
-                    description: Place Id
-                    example: '0001'
-                  power:
-                    type: integer
-                    description: Power in bundle
-                xml:
-                  name: order
+                $ref: '#/components/schemas/Product'
         '404':
           description: Product not found
         '500':
           description: Server error
+    put:
+      summary: Put stocks count
+      description: Put available product on stock
+      operationId: updateStock
+      parameters:
+        - in: path
+          name: productId
+          description: ID of product to update
+          required: true
+          examples:
+            Product 1:
+              value: 0fd0c978-c00d-dbcf-6b44-85141c81fcf2
+            Product 2:
+              value: 2eb2407a-c8e8-161e-aafe-b02dd8be64ea
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCount'
+            examples:
+              Count 100:
+                value: {"count": "100"}
+              Count 10:
+                value: {"count": "10"}
+              Count 0:
+                value: {"count": "10"}
+
+      responses:
+        '200':
+          description: Stock update OK
+        '404':
+          description: Product not found
+        '400':
+          description: Wrong parameters
+        '500':
+          description: Server error
+
 components:
   schemas:
     Product:
@@ -106,7 +130,7 @@ components:
       properties:
         id:
           type: string
-          example: '0001'
+          example: '00010000-0000-0000-0000-0000000000001'
         description:
           type: string
           description: Product Id
@@ -125,5 +149,35 @@ components:
         power:
           type: integer
           description: Power in bundle
+    CreateProduct:
+      type: object
+      required:
+        - "description"
+        - "title"
+        - "placeId"
+        - "power"
+        - "price"
+        - "priority"
+      properties:
+        "description":
+          type: string
+        "price":
+          type: number
+        "priority":
+          type: integer
+        "placeId":
+          type: string
+        "power":
+          type: integer
+    ProductCount:
+      type: object
+      required:
+        - "count"
+      properties:
+        "count":
+          description: Stock qty
+          type: number
+          format: string
       xml:
-        name: order
+        name: "ProductCount"
+
