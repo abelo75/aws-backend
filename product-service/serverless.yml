@@ -1,0 +1,177 @@
+service: product-service
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  profile: default
+  region: eu-west-1
+  stage: dev
+  httpApi:
+    cors: true
+  environment:
+    PRODUCTS_TABLE: "products1"
+    STOCKS_TABLE: "stocks1"
+    PROVIDER_REGION: ${self:provider.region}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - "dynamodb:*"
+      Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/*"
+
+functions:
+  getProductsById:
+    handler: handler.getProductsById
+    events:
+      - httpApi:
+          method: GET
+          path: /products/{productId}
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource:
+          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
+  getProductsList:
+    handler: handler.getProductsList
+    events:
+      - httpApi:
+          method: GET
+          path: /products
+    #iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: "*"
+#        Resource:
+#          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+#          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
+  createProduct:
+    handler: handler.createProduct
+    events:
+      - httpApi:
+          method: POST
+          path: /products
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+  updateStock:
+    handler: handler.updateStock
+    events:
+      - httpApi:
+          method: PUT
+          path: /products/{productId}
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
+        #Resource: "arn:aws:dynamodb:us-east-1:897362587641:table/Table_Name"
+      #    The following are a few example events you can configure
+#    NOTE: Please make sure to change your handler code to work with those events
+#    Check the event documentation for details
+#    events:
+#      - cloudwatchEvent:
+#          event:
+#            source:
+#              - "aws.ec2"
+#            detail-type:
+#              - "EC2 Instance State-change Notification"
+#            detail:
+#              state:
+#                - pending
+#      - cloudwatchLog: '/aws/lambda/hello'
+#      - cognitoUserPool:
+#          pool: MyUserPool
+#          trigger: PreSignUp
+#      - alb:
+#          listenerArn: arn:aws:elasticloadbalancing:us-east-1:XXXXXX:listener/app/my-load-balancer/50dc6c495c0c9188/
+#          priority: 1
+#          conditions:
+#            host: example.com
+#            path: /hello
+
+plugins:
+  - serverless-webpack
+  - serverless-openapi-documentation
+#  - serverless-dynamodb-local
+  - serverless-iam-roles-per-function
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true # enable auto-packing of external modules
+#  dynamodb:
+#    stages:
+#      - dev
+#    start:
+#      port: 8000
+#      inMemory: true
+#      migrate: true
+#      seed: true
+#      convertEmptyValues: true
+#    seed:
+#      domain:
+#        sources:
+#          - table: products
+#            sources: [./data/products.json]
+#          - table: stocks
+#            sources: [./data/stocks.json]
+
+resources:
+  Resources:
+    products:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.PRODUCTS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    stocks:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.STOCKS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+#  Resources:
+#    NewResource:
+#      Type: AWS::S3::Bucket
+#      Properties:
+#        BucketName: my-new-bucket
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"

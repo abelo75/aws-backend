@@ -1,0 +1,124 @@
+service: import-service
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  profile: default
+  region: eu-west-1
+  stage: dev
+  httpApi:
+    cors: true
+
+  environment:
+    BUCKET: aws-course-task5-bucket-auto
+    UPLOAD_PREFIX: uploaded/
+    PARSED_PREFIX: parsed/
+    REGION: ${self:provider.region}
+  iamRoleStatements:
+    - Effect: Allow
+      Action: s3:*
+      Resource:
+        - arn:aws:s3:::${self:provider.environment.BUCKET}
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+
+
+functions:
+  importProductsFile:
+    handler: handler.importProductsFile
+    events:
+      - http:
+          path: /import
+          method: GET
+          request:
+              parameters:
+                  querystrings:
+                      name: true
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:ListBucket
+        Resource:
+          - arn:aws:s3:::${self:provider.environment.BUCKET}
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+        Resource:
+          - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+
+  importFileParser:
+    handler: handler.importFileParser
+    events:
+      - s3:
+          bucket: ${self:provider.environment.BUCKET}
+          event: s3:ObjectCreated:*
+          rules:
+            - prefix: ${self:provider.environment.UPLOAD_PREFIX}
+          existing: true
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+#          - s3:*
+          - s3:GetObject
+          - s3:PutObject
+          - s3:DeleteObject
+        Resource:
+          - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+          - arn:aws:s3:::${self:provider.environment.BUCKET}
+
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
+plugins:
+  - serverless-webpack
+  - serverless-iam-roles-per-function
+
+resources:
+  Resources:
+    S3Bucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedHeaders:
+                - '*'
+              AllowedOrigins:
+                - '*'
+              AllowedMethods:
+                - PUT
+                - GET
+                - HEAD
+                - POST
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: ${self:provider.environment.BUCKET}-policy
+          Statement:
+            - Sid: ReadList
+              Effect: Allow
+              Principal: '*'
+              Action: s3:ListBucket
+              Resource:
+                - arn:aws:s3:::${self:provider.environment.BUCKET}
+            - Sid: Objects
+              Effect: Allow
+              Principal: '*'
+              Action:
+#                - s3:*
+                - s3:PutObject
+                - s3:PutObject
+                - s3:DeleteObject
+              Resource:
+                - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+        Bucket: !Ref S3Bucket

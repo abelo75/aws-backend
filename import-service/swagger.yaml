@@ -1,0 +1,39 @@
+openapi: 3.0.3
+info:
+  title: API gateway
+  description: API gateway docs for task 3
+  termsOfService: Free for use
+  contact:
+    name: Aleh
+    email: aleh_belanouski@epam.com
+  license:
+    name: MIT
+  version: 1.0.0
+servers:
+  - url: https://bormk75cml.execute-api.eu-west-1.amazonaws.com/dev
+paths:
+  /import:
+    get:
+      summary: Find product by Id
+      description: Returns a single product
+      operationId: getProductsById
+      parameters:
+        - name: name
+          in: query
+          description: file name
+          required: true
+          schema:
+            type: string
+          examples:
+            Product 1:
+              value: test.csv
+
+      responses:
+        '200':
+          description: Return URL for PUT file
+          content:
+            text/plain:
+              schema:
+                type: string
+        '500':
+          description: Server error
