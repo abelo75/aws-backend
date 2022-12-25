@@ -6,3 +6,6 @@ export const PREFIX = process.env.UPLOAD_PREFIX ?? '';
 export const PARSED_PREFIX = process.env.PARSED_PREFIX ?? '';
 
 export const s3Client = new S3Client({region: REGION});
+
+export const ACCOUNT_ID = process.env.ACCOUNT_ID;
+export const QUEUE_NAME = process.env.QUEUE_NAME

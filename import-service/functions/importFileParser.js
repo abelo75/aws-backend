@@ -3,7 +3,7 @@ import {BUCKET, PARSED_PREFIX, PREFIX, s3Client} from "./config";
 import {pipeline} from 'stream';
 import csv from 'csv-parser';
 import {copyObject, removeObject} from "./s3Utils";
-import {putToProductDb} from "./dbUtils";
+import {sendMessageToProductQueue} from "./sqsUtil";
 
 
 const parseObject = async (key, onTransformComplete) => {
@@ -42,7 +42,8 @@ export const importFileParser = (event) => {
       const dst = `${PARSED_PREFIX}${key.substring(PREFIX.length)}`;
       console.log('Handle ', JSON.stringify({src, dst}));
       parseObject(key, async (result) => {
-        await putToProductDb(result);
+        // await putToProductDb(result);
+        await sendMessageToProductQueue(result);
         await copyObject(src, dst)
         await removeObject(key);
       });

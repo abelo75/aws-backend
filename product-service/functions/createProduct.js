@@ -1,22 +1,30 @@
-import {ddbClient, PRODUCTS_TABLE, uuidv4} from "./ddbClient.js";
+import {dbClient, PRODUCTS_TABLE, uuidv4} from "./clients.js";
 import {PutItemCommand} from "@aws-sdk/client-dynamodb";
 
+export const createProductInDb = async (product) => {
+  try {
+    const result = {
+      TableName: PRODUCTS_TABLE, Item: {
+        id: {S: product?.id ?? uuidv4()},
+        description: {S: product.description},
+        title: {S: product.title},
+        price: {N: String(product.price ?? 0)},
+        placeId: {S: product.placeId},
+        power: {N: String(product.power ?? '0')},
+        priority: {N: String(product.priority ?? '0')},
+      }
+    };
+    await dbClient.send(new PutItemCommand(result));
+    return result;
+  } catch (e) {
+    console.warn('Error create database record', e?.message ?? JSON.stringify(e));
+  }
+}
 export const createProduct = async (event) => {
 
-  const result = {
-    id: {S: uuidv4() },
-    description: { S: ''},
-    title: { S: '' },
-    price: { N: '0' },
-    placeId: { S: '' },
-    power: { N: '0' },
-    priority: { N: '0' },
-  };
 
   const response = {
-    statusCode: 400,
-    error: null,
-    body: JSON.stringify(result),
+    statusCode: 400, error: null, body: '',
   }
 
   let data;
@@ -28,12 +36,14 @@ export const createProduct = async (event) => {
     body = {};
   }
 
+  const result = {};
+
 
   try {
     console.log('Event', JSON.stringify(event));
     const checkField = (name, type = 'S') => {
       const errorText = `{error: "Field ${name} is type ${typeof body[name]} but should be ${type === 'S' ? 'string' : 'number'}, value ${body[name]}"}`;
-      result[name] = { S: body[name] };
+      result[name] = body[name];
       if (type === 'S') {
         if (typeof body[name] === 'undefined') {
           response.body = errorText;
@@ -42,7 +52,6 @@ export const createProduct = async (event) => {
         }
         return true;
       }
-      result[name] = { N: String(body[name]) };
       if (Number.isNaN(Number(body[name]))) {
         response.body = errorText;
         response.error = errorText;
@@ -52,7 +61,7 @@ export const createProduct = async (event) => {
     }
 
     if (body?.id) {
-      result.id = { S: body?.id };
+      result.id = body.id;
     }
 
     if (!checkField('description')) {
@@ -76,23 +85,7 @@ export const createProduct = async (event) => {
     if (response.error) {
       return response;
     }
-
-    const params = {
-      TableName: PRODUCTS_TABLE,
-      Item: result
-    }
-
-    data = {
-      id: result.id.S,
-      title: result.title.S,
-      description: result.description.S,
-      priority: result.price.N,
-      price: result.price.N,
-      power: result.power.N,
-    }
-
-    await ddbClient.send(new PutItemCommand(params));
-
+    await createProductInDb(result);
     response.statusCode = 200;
   } catch (e) {
     console.error('Error', JSON.stringify(e?.message));

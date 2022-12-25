@@ -16,16 +16,24 @@ provider:
     UPLOAD_PREFIX: uploaded/
     PARSED_PREFIX: parsed/
     REGION: ${self:provider.region}
-  iamRoleStatements:
-    - Effect: Allow
-      Action: s3:*
-      Resource:
-        - arn:aws:s3:::${self:provider.environment.BUCKET}
-    - Effect: Allow
-      Action:
-        - s3:*
-      Resource:
-        - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+    QUEUE_NAME: catalogItemsQueue
+    ACCOUNT_ID: 262612632023
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: s3:*
+          Resource:
+            - arn:aws:s3:::${self:provider.environment.BUCKET}
+        - Effect: Allow
+          Action:
+            - s3:*
+          Resource:
+            - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+        - Effect: Allow
+          Action: sqs:*
+          Resource:
+            - "*"
 
 
 functions:
@@ -63,15 +71,21 @@ functions:
           existing: true
     iamRoleStatementsInherit: true
     iamRoleStatements:
-      - Effect: Allow
-        Action:
-#          - s3:*
-          - s3:GetObject
-          - s3:PutObject
-          - s3:DeleteObject
-        Resource:
-          - arn:aws:s3:::${self:provider.environment.BUCKET}/*
-          - arn:aws:s3:::${self:provider.environment.BUCKET}
+    #    iamRoleStatements:
+        - Effect: Allow
+          Action:
+  #          - s3:*
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+          Resource:
+              - arn:aws:s3:::${self:provider.environment.BUCKET}/*
+              - arn:aws:s3:::${self:provider.environment.BUCKET}
+        - Effect: Allow
+          Action:
+              - sqs:*
+          Resource:
+              - arn:aws:sqs:::${self:provider.environment.QUEUE_NAME}
 
 custom:
   webpack:
@@ -99,6 +113,10 @@ resources:
                 - GET
                 - HEAD
                 - POST
+#    Queue:
+#      Type: AWS::SQS::Queue
+#      Properties:
+#        QueueName: ${self:provider.environment.QUEUE_NAME}
     BucketPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
