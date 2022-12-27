@@ -1,0 +1,186 @@
+service: product-service
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  profile: default
+  region: eu-west-1
+  stage: dev
+  httpApi:
+    cors: true
+  environment:
+    PRODUCTS_TABLE: "products-dev"
+    STOCKS_TABLE: "stocks-dev"
+    PROVIDER_REGION: ${self:provider.region}
+    QUEUE_NAME: catalogItemsQueue
+    TOPIC_NAME: createProductTopic
+    TOPIC_ENDPOINT1: aleh_belanouski@epam.com
+    TOPIC_ENDPOINT2: admin@ovb-tech.com
+    TOPIC_ARN:
+      Ref: Topic
+    SQS_URL:
+      Ref: Queue
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:*
+            - sqs:*
+            - sns:*
+          Resource:
+            - arn:aws:dynamodb:::${self:provider.environment.PRODUCTS_TABLE}
+            - arn:aws:dynamodb:::${self:provider.environment.PRODUCTS_TABLE}/*
+            - arn:aws:dynamodb:::${self:provider.environment.STOCKS_TABLE}
+            - arn:aws:dynamodb:::${self:provider.environment.STOCKS_TABLE}/*
+            - arn:aws:sqs:::${self:provider.environment.QUEUE_NAME}
+            - arn:aws:sns:::${self:provider.environment.TOPIC_NAME}
+
+functions:
+  getProductsList:
+    handler: handler.getProductsList
+    events:
+      - httpApi:
+          method: GET
+          path: /products
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+        Resource: '*'
+  #                  - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}/*
+  #                  - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}/*
+  getProductsById:
+    handler: handler.getProductsById
+    events:
+      - httpApi:
+          method: GET
+          path: /products/{productId}
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource:
+          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}"
+          - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}"
+  catalogBatchProcess:
+    handler: handler.catalogBatchProcess
+    events:
+      - sqs:
+          batchSize: 5
+          arn:
+            Fn::GetAtt:
+              - Queue
+              - Arn
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:*
+          - sns:*
+        Resource:
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}
+          - arn:aws:sns:${self:provider.region}:*:${self:provider.environment.TOPIC_NAME}
+
+  createProduct:
+    handler: handler.createProduct
+    events:
+      - httpApi:
+          method: POST
+          path: /products
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.PRODUCTS_TABLE}
+  updateStock:
+    handler: handler.updateStock
+    events:
+      - httpApi:
+          method: PUT
+          path: /products/{productId}
+    iamRoleStatementsInherit: true
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - dynamodb:Query
+          - dynamodb:Scan
+          - dynamodb:GetItem
+          - dynamodb:PutItem
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.STOCKS_TABLE}
+
+plugins:
+  - serverless-webpack
+  - serverless-openapi-documentation
+  - serverless-iam-roles-per-function
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
+resources:
+  Resources:
+    products:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.PRODUCTS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    stocks:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        TableName: ${self:provider.environment.STOCKS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    Queue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: ${self:provider.environment.QUEUE_NAME}
+    Topic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: ${self:provider.environment.TOPIC_NAME}
+    Subs1:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn:
+          Ref: Topic
+        Protocol: email
+        Endpoint: ${self:provider.environment.TOPIC_ENDPOINT1}
+        FilterPolicy: { "placeId": [ "0001" ] }
+
+    Subs2:
+      Type: AWS::SNS::Subscription
+      Properties:
+        TopicArn:
+          Ref: Topic
+        Protocol: email
+        Endpoint: ${self:provider.environment.TOPIC_ENDPOINT2}
+        FilterPolicy: { "placeId": [ "0002" ] }
