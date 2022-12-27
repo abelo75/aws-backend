@@ -1,0 +1,7 @@
+description,title,price,power,placeId,priority
+Maximum Power 50kW,Max! 50 kW,100,50,0001,0
+Maximum Power 50kW High Priority,Max! 50 kW Priority,110,50,0002,1
+Maximum Power 50kW Luxury,Max! 50 kW Lux,120,50,0002,2
+Half Power 25kW,Half 25 kW,55,25,0001,0
+Half Power 25kW High Priority,Half! 25 kW Priority,60,25,0001,1
+Half Power 25kW Luxury,Half! 25 kW Lux,65,25,0001,2

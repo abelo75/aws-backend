@@ -48,6 +48,12 @@ functions:
                   querystrings:
                       name: true
           cors: true
+          authorizer:
+            name: basicAuthorizer
+            arn: arn:aws:lambda:${self:provider.region}:${self:provider.environment.ACCOUNT_ID}:function:authorization-service-${self:provider.stage}-basicAuthorizer
+            resultTtlInSeconds: 0
+            identitySource: method.request.header.Authorization
+            type: token
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -140,3 +146,12 @@ resources:
               Resource:
                 - arn:aws:s3:::${self:provider.environment.BUCKET}/*
         Bucket: !Ref S3Bucket
+    Unauthorized:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          "gatewayresponse.header.Access-Control-Allow-Origin": "'*'"
+          "gatewayresponse.header.Access-Control-Allow-Headers": "'*'"
+        ResponseType: "DEFAULT_4XX"
+        RestApiId:
+          Ref: "ApiGatewayRestApi"
